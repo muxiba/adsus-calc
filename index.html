@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ADSUS - Adsorbent Sustainability Index</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #27ae60;
+            --accent: #f39c12;
+            --danger: #c0392b;
+            --light: #ecf0f1;
+            --dark: #7f8c8d;
+            
+            /* Scale Colors */
+            --c-unsustainable: #c0392b; /* Red */
+            --c-low: #e67e22;           /* Orange */
+            --c-inter: #f1c40f;         /* Yellow */
+            --c-good: #8bc34a;          /* Light Green */
+            --c-excellent: #2ecc71;     /* Dark Green */
+        }
+
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; color: #333; margin: 0; padding: 20px; }
+        .container { max-width: 1100px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid var(--light); padding-bottom: 20px; }
+        h1 { color: var(--primary); margin: 0; }
+        h2 { color: var(--secondary); font-size: 1.2rem; margin-top: 5px; }
+        .section-title { color: var(--primary); border-left: 5px solid var(--secondary); padding-left: 10px; margin-top: 40px; margin-bottom: 20px; font-size: 1.3rem; }
+        
+        .criteria-row { display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 20px; align-items: flex-start; border: 1px solid #eee; padding: 15px; border-radius: 8px; background: #fafafa; }
+        .input-group { flex: 1; min-width: 280px; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 0.95rem; color: #2c3e50; }
+        .desc-text { font-size: 0.85rem; color: var(--dark); margin-bottom: 8px; font-style: italic; line-height: 1.4; }
+        
+        input[type="number"], select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; font-size: 1rem; }
+        input[type="number"]:focus, select:focus { border-color: var(--secondary); outline: none; }
+        select option { font-size: 0.9rem; padding: 5px; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-top: 10px; background: #fff; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+        th { background-color: var(--light); color: var(--primary); }
+        
+        .score-box { text-align: right; min-width: 100px; display: flex; flex-direction: column; justify-content: center; align-items: flex-end; }
+        .score-label { font-size: 0.8rem; color: var(--dark); text-transform: uppercase; letter-spacing: 1px; }
+        .score-value { font-size: 1.5rem; font-weight: bold; color: var(--secondary); }
+        
+        /* RESULT SECTION & GRAPHIC */
+        .result-section { text-align: center; background: #fff; padding: 40px; border-radius: 10px; margin-top: 40px; border: 2px solid var(--secondary); box-shadow: 0 5px 20px rgba(0,0,0,0.05); }
+        
+        /* SVG Container */
+        .chart-container {
+            position: relative;
+            width: 500px;  
+            height: 260px;
+            margin: 0 auto;
+            overflow: hidden;
+        }
+        
+        /* SVG Text Styles */
+        .chart-text { font-family: 'Segoe UI', sans-serif; font-size: 14px; font-weight: bold; fill: #fff; pointer-events: none; }
+        .stage-text { font-family: 'Segoe UI', sans-serif; font-size: 18px; font-weight: 900; fill: #fff; pointer-events: none; }
+        
+        /* Global Score Text */
+        .global-score-text { font-family: 'Segoe UI', sans-serif; font-size: 65px; font-weight: 800; fill: #333; }
+        
+        .global-label { font-family: 'Segoe UI', sans-serif; font-size: 12px; fill: #666; text-transform: uppercase; letter-spacing: 1px; }
+
+        .legend { text-align: left; display: inline-block; margin-top: 10px; font-size: 0.9rem; background: #f9f9f9; padding: 20px; border-radius: 8px; border: 1px solid #eee; }
+        .legend-item { margin: 8px 0; display: flex; align-items: center; }
+        .dot { width: 15px; height: 15px; display: inline-block; margin-right: 12px; border-radius: 3px; }
+        
+        button.calc-btn { background-color: var(--primary); color: white; border: none; padding: 18px 50px; font-size: 1.3rem; border-radius: 50px; cursor: pointer; transition: background 0.3s, transform 0.2s; margin-top: 30px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        button.calc-btn:hover { background-color: #34495e; transform: translateY(-2px); }
+        
+        .add-btn { background: var(--secondary); color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; margin-top: 5px; }
+        .rm-btn { background: var(--danger); color: white; border: none; padding: 2px 8px; border-radius: 4px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>ADSUS</h1>
+        <h2>Adsorbent Sustainability Index</h2>
+    </header>
+
+    <form id="adsusForm">
+        
+        <!-- ======================= PRODUCTION ======================= -->
+        <h3 class="section-title">Production Stage (P)</h3>
+
+        <!-- P1 -->
+        <div class="criteria-row">
+            <div class="input-group">
+                <label>P1: Renewable Feedstock (%S)</label>
+                <div class="desc-text">Total mass used in preparation and mass of sustainable material.</div>
+                <div style="display:flex; gap:10px;">
+                    <div style="flex:1"><label style="font-size:0.8rem">Total Mass (g):</label><input type="number" id="p1_total" min="0" step="0.01" oninput="calcP1()"></div>
+                    <div style="flex:1"><label style="font-size:0.8rem">Sustainable Mass (g):</label><input type="number" id="p1_sus" min="0" step="0.01" oninput="calcP1()"></div>
+                </div>
+            </div>
+            <div class="score-box">
+                <span class="score-label">Score P1</span>
+                <span class="score-value" id="score_p1">0.00</span>
+            </div>
+        </div>
+
+        <!-- P2 -->
+        <div class="criteria-row">
+            <div class="input-group">
+                <label>P2: Toxic Feedstock (%T)</label>
+                <div class="desc-text">Mass of toxic/aggressive material, excluding solvent.</div>
+                <div style="display:flex; gap:10px;">
+                    <div style="flex:1"><label style="font-size:0.8rem">Total Mass (g):</label><input type="number" id="p2_total" disabled style="background:#eee;" title="From P1"></div>
+                    <div style="flex:1"><label style="font-size:0.8rem">Toxic Mass (g):</label><input type="number" id="p2_tox" min="0" step="0.01" oninput="calcP2()"></div>
+                </div>
+            </div>
+            <div class="score-box">
+                <span class="score-label">Score P2</span>
+                <span class="score-value" id="score_p2">1.00</span>
+            </div>
+        </div>
+
+        <!-- P3 -->
+        <div class="criteria-row">
+            <div class="input-group">
+                <label>P3: Use of Toxic Solvents</label>
+                <select id="p3_select" onchange="calcP3()">
+                    <option value="1">1.00 - Green (Water, Ethanol, Ethyl Lactate)</option>
+                    <option value="0.9">0.90 - Low Tox + Biodegradable (Ethyl Acetate)</option>
+                    <option value="0.8">0.80 - Low Tox + Persistent (PEG, DMSO)</option>
+                    <option value="0.75">0.75 - Mod. Tox + Biodegradable (Acetonitrile)</option>
+                    <option value="0.6">0.60 - Mod. Tox + Persistent (DMF)</option>
+                    <option value="0.45">0.45 - Toxic (Methanol, THF)</option>
+                    <option value="0.3">0.30 - Toxic & Flammable (Toluene)</option>
+                    <option value="0.15">0.15 - Toxic & Bioaccumulative (NMP)</option>
+                    <option value="0">0.00 - Forbidden/Hazardous (Benzene)</option>
+                </select>
+            </div>
+            <div class="score-box">
+                <span class="score-label">Score P3</span>
+                <span class="score-value" id="score_p3">1.00</span>
+            </div>
+        </div>
+
+        <!-- P4 -->
+        <div class="criteria-row">
+            <div class="input-group" style="width: 100%; flex: 0 0 100%;">
+                <label>P4: Energy Consumption</label>
+                <div class="desc-text">Total consumption (kWh) divided by produced mass (kg).</div>
+                <table>
+                    <thead>
+                        <tr><th>Equipment</th><th>Power (W)</th><th>Time (h)</th><th>Energy (kWh)</th><th></th></tr>
+                    </thead>
+                    <tbody id="p4_table">
+                        <tr><td><input type="text" placeholder="Ex: Oven"></td><td><input type="number" class="p4-w" oninput="calcP4()"></td><td><input type="number" class="p4-h" oninput="calcP4()"></td><td class="p4-res">0</td><td></td></tr>
+                    </tbody>
+                </table>
+                <button type="button" class="add-btn" onclick="addP4Row()">+ Equipment</button>
+                <div style="margin-top:10px; display:flex; gap:10px; align-items:center;">
+                    <label>Produced Mass (kg):</label>
+                    <input type="number" id="p4_mass" value="1" step="0.01" style="width:100px" oninput="calcP4()">
+                    <span style="margin-left:auto; font-weight:bold; color:var(--primary)">Specific: <span id="p4_kwh_kg">0.00</span> kWh/kg</span>
+                </div>
+            </div>
+            <div class="score-box">
+                <span class="score-label">Score P4</span>
+                <span class="score-value" id="score_p4">1.00</span>
+            </div>
+        </div>
+
+        <!-- P5 -->
+        <div class="criteria-row">
+            <div class="input-group">
+                <label>P5: Generated Waste (E-factor)</label>
+                <select id="p5_select" onchange="calcP5()">
+                    <option value="1">1.00 - No waste (E = 0)</option>
+                    <option value="0.85">0.85 - x ≤ 1 g/g (E ≤ 1)</option>
+                    <option value="0.6">0.60 - 1 < x ≤ 5 g/g</option>
+                    <option value="0.35">0.35 - 5 < x ≤ 10 g/g</option>
+                    <option value="0.1">0.10 - x > 10 g/g</option>
+                    <option value="0">0.00 - Hazardous Waste</option>
+                </select>
+            </div>
+            <div class="score-box">
+                <span class="score-label">Score P5</span>
+                <span class="score-value" id="score_p5">1.00</span>
+            </div>
+        </div>
+
+        <!-- P6 -->
+        <div class="criteria-row">
+            <div class="input-group">
+                <label>P6: Operator Safety</label>
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px;">
+                    <div>
+                        <label style="font-size:0.8rem">Temp (ST)</label>
+                        <select class="p6-sub" onchange="calcP6()">
+                            <option value="1">≤ 40 °C</option>
+                            <option value="0.75">40-80 °C</option>
+                            <option value="0.5">80-150 °C</option>
+                            <option value="0.25">150-250 °C</option>
+                            <option value="0">> 250 °C</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size:0.8rem">Pressure (SP)</label>
+                        <select class="p6-sub" onchange="calcP6()">
+                            <option value="1">Ambient</option>
+                            <option value="0.75">1-5 bar</option>
+                            <option value="0.5">5-20 bar</option>
+                            <option value="0.25">20-50 bar</option>
+                            <option value="0">> 50 bar</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size:0.8rem">GHS Risk (SG)</label>
+                        <select class="p6-sub" onchange="calcP6()">
+                            <option value="1">None</option>
+                            <option value="0.75">Low (Irritant)</option>
+                            <option value="0.5">Medium (Flam/Tox)</option>
+                            <option value="0.25">High (Corrosive)</option>
+                            <option value="0">Critical (Explos/Cancer)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="score-box">
+                <span class="score-label">Score P6</span>
+                <span class="score-value" id="score_p6">1.00</span>
+            </div>
+        </div>
+
+        <!-- ======================= APPLICATION ======================= -->
+        <h3 class="section-title">Application Stage (A)</h3>
+
+        <!-- A1 -->
+        <div class="criteria-row">
+            <div class="input-group">
+                <label>A1: Adsorption Capacity (q<sub>e,max</sub>)</label>
+                <select id="a1_select" onchange="calcA1()">
+                    <option value="1">1.00 - q > 1.50</option>
+                    <option value="0.75">0.75 - 0.75 < q ≤ 1.50</option>
+                    <option value="0.5">0.50 - 0.30 < q ≤ 0.75</option>
+                    <option value="0.25">0.25 - 0.03 < q ≤ 0.30</option>
+                    <option value="0">0.00 - q ≤ 0.03</option>
+                </select>
+            </div>
+            <div class="score-box">
+                <span class="score-label">Score A1</span>
+                <span class="score-value" id="score_a1">1.00</span>
+            </div>
+        </div>
+
+        <!-- A2 -->
+        <div class="criteria-row">
+            <div class="input-group">
+                <label>A2: Reusability (Cycles)</label>
+                <select id="a2_select" onchange="calcA2()">
+                    <option value="1">1.00 - ≥ 6 cycles</option>
+                    <option value="0.75">0.75 - 4 to 5 cycles</option>
+                    <option value="0.5">0.50 - 2 to 3 cycles</option>
+                    <option value="0.25">0.25 - 1 cycle</option>
+                    <option value="0">0.00 - 0 cycle</option>
+                </select>
+            </div>
+            <div class="score-box">
+                <span class="score-label">Score A2</span>
+                <span class="score-value" id="score_a2">1.00</span>
+            </div>
+        </div>
+
+        <!-- A3 -->
+        <div class="criteria-row">
+            <div class="input-group">
+                <label>A3: Real Conditions</label>
+                <select id="a3_select" onchange="calcA3()">
+                    <option value="1">1.00 - ≥80% in real/simulated effluent + interferents</option>
+                    <option value="0.75">0.75 - <80% real, but ≥80% with pH adjustment</option>
+                    <option value="0.5">0.50 - ≥80% lab with interferent species</option>
+                    <option value="0.25">0.25 - ≥80% lab without interferent species</option>
+                    <option value="0">0.00 - None of the above</option>
+                </select>
+            </div>
+            <div class="score-box">
+                <span class="score-label">Score A3</span>
+                <span class="score-value" id="score_a3">1.00</span>
+            </div>
+        </div>
+
+        <!-- A4 -->
+        <div class="criteria-row">
+            <div class="input-group">
+                <label>A4: Regeneration Solvent</label>
+                <select id="a4_select" onchange="calcA4()">
+                    <option value="1">1.00 - Green (Water, Ethanol, CO2)</option>
+                    <option value="0.87">0.87 - Weak Acid/Base</option>
+                    <option value="0.75">0.75 - Isopropanol</option>
+                    <option value="0.63">0.63 - Acetone</option>
+                    <option value="0.5">0.50 - Methanol</option>
+                    <option value="0.38">0.38 - Strong Acid/Base</option>
+                    <option value="0.25">0.25 - Acetonitrile</option>
+                    <option value="0.1">0.10 - DMSO</option>
+                    <option value="0">0.00 - DMF</option>
+                </select>
+            </div>
+            <div class="score-box">
+                <span class="score-label">Score A4</span>
+                <span class="score-value" id="score_a4">1.00</span>
+            </div>
+        </div>
+
+        <!-- A5 -->
+        <div class="criteria-row">
+            <div class="input-group">
+                <label>A5: Secondary Leaching (Application)</label>
+                <select id="a5_select" onchange="calcA5()">
+                    <option value="1">1.00 - No toxic species</option>
+                    <option value="0.75">0.75 - Has species, No leaching</option>
+                    <option value="0.5">0.50 - Has species, Below limit</option>
+                    <option value="0.25">0.25 - Has species, Above limit</option>
+                    <option value="0">0.00 - Has species, No study</option>
+                </select>
+            </div>
+            <div class="score-box">
+                <span class="score-label">Score A5</span>
+                <span class="score-value" id="score_a5">1.00</span>
+            </div>
+        </div>
+
+        <!-- ======================= DISPOSAL ======================= -->
+        <h3 class="section-title">Disposal Stage (D)</h3>
+
+        <!-- D1 -->
+        <div class="criteria-row">
+            <div class="input-group">
+                <label>D1: Chemical Stability (ΔpH)</label>
+                <select id="d1_select" onchange="calcD1()">
+                    <option value="1">1.00 - ΔpH ≤ 0.5 (High)</option>
+                    <option value="0.5">0.50 - 0.5 < ΔpH ≤ 1.5 (Moderate)</option>
+                    <option value="0">0.00 - ΔpH > 1.5 (Low)</option>
+                </select>
+            </div>
+            <div class="score-box">
+                <span class="score-label">Score D1</span>
+                <span class="score-value" id="score_d1">1.00</span>
+            </div>
+        </div>
+
+        <!-- D2 -->
+        <div class="criteria-row">
+            <div class="input-group">
+                <label>D2: Secondary Contamination (Disposal)</label>
+                <select id="d2_select" onchange="calcD2()">
+                    <option value="1">1.00 - No toxic species</option>
+                    <option value="0.75">0.75 - Has species, No leaching</option>
+                    <option value="0.5">0.50 - Has species, Below limit</option>
+                    <option value="0.25">0.25 - Has species, Above limit</option>
+                    <option value="0">0.00 - Has species, No study</option>
+                </select>
+            </div>
+            <div class="score-box">
+                <span class="score-label">Score D2</span>
+                <span class="score-value" id="score_d2">1.00</span>
+            </div>
+        </div>
+
+        <!-- D3 -->
+        <div class="criteria-row">
+            <div class="input-group">
+                <label>D3: Waste Composition</label>
+                <table id="d3_table">
+                    <thead><tr><th>Component</th><th>Mass Fraction (f)</th><th>Score (S)</th><th></th></tr></thead>
+                    <tbody>
+                        <tr>
+                            <td><input type="text" placeholder="Ex: Clay"></td>
+                            <td><input type="number" class="d3-f" value="1" step="0.1" max="1" min="0" oninput="calcD3()"></td>
+                            <td>
+                                <select class="d3-s" onchange="calcD3()">
+                                    <option value="1">1.00 - Reused/Green</option>
+                                    <option value="0.75">0.75 - Natural/Non-toxic</option>
+                                    <option value="0.5">0.50 - Green synthetic</option>
+                                    <option value="0.25">0.25 - Synthetic/Natural toxic</option>
+                                    <option value="0">0.00 - Toxic/Difficult disposal</option>
+                                </select>
+                            </td>
+                            <td></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <button type="button" class="add-btn" onclick="addD3Row()">+ Component</button>
+            </div>
+            <div class="score-box">
+                <span class="score-label">Score D3</span>
+                <span class="score-value" id="score_d3">1.00</span>
+            </div>
+        </div>
+
+        <!-- D4 -->
+        <div class="criteria-row">
+            <div class="input-group">
+                <label>D4: Adsorbent-Pollutant Stability</label>
+                <select id="d4_select" onchange="calcD4()">
+                    <option value="1">1.00 - No pollutant release</option>
+                    <option value="0">0.00 - Pollutant release exists</option>
+                </select>
+            </div>
+            <div class="score-box">
+                <span class="score-label">Score D4</span>
+                <span class="score-value" id="score_d4">1.00</span>
+            </div>
+        </div>
+
+        <div style="text-align: center;">
+            <button type="button" class="calc-btn" onclick="calcTotal()">Calculate ADSUS Index</button>
+        </div>
+
+    </form>
+
+    <div class="result-section">
+        <h3>Sustainability Index Result</h3>
+        
+        <!-- SVG CHART AREA -->
+        <div class="chart-container" id="svg-chart-wrapper">
+            <!-- SVG injected by JS -->
+        </div>
+
+        <!-- Classification Text -->
+        <h2 id="final_classification" style="margin-top: 5px; font-weight: 800; text-transform: uppercase;">Waiting for calculation...</h2>
+
+        <div class="legend">
+            <div class="legend-item"><span class="dot" style="background:var(--c-excellent)"></span>0.85 – 1.00: Excellent (Green Adsorbent)</div>
+            <div class="legend-item"><span class="dot" style="background:var(--c-good)"></span>0.65 – 0.84: Good sustainability</div>
+            <div class="legend-item"><span class="dot" style="background:var(--c-inter)"></span>0.45 – 0.64: Intermediate sustainability</div>
+            <div class="legend-item"><span class="dot" style="background:var(--c-low)"></span>0.25 – 0.44: Low sustainability</div>
+            <div class="legend-item"><span class="dot" style="background:var(--c-unsustainable)"></span>0.00 – 0.24: Unsustainable</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- CALCULATION FUNCTIONS ---
+    function updateDisplay(id, val) { document.getElementById(id).innerText = val.toFixed(2); }
+
+    function calcP1() {
+        const total = parseFloat(document.getElementById('p1_total').value) || 0;
+        const sus = parseFloat(document.getElementById('p1_sus').value) || 0;
+        let s = (total > 0) ? (sus / total) : 0;
+        if(s > 1) s = 1;
+        document.getElementById('p2_total').value = total;
+        updateDisplay('score_p1', s);
+        calcP2();
+        return s;
+    }
+
+    function calcP2() {
+        const total = parseFloat(document.getElementById('p1_total').value) || 0;
+        const tox = parseFloat(document.getElementById('p2_tox').value) || 0;
+        let s = 1.0;
+        if (total > 0) {
+            let pctTox = (tox / total) * 100;
+            if (pctTox === 0) s = 1.0;
+            else if (pctTox <= 5) s = 0.75;
+            else if (pctTox <= 10) s = 0.50;
+            else if (pctTox <= 20) s = 0.25;
+            else s = 0.0;
+        }
+        updateDisplay('score_p2', s);
+        return s;
+    }
+    function calcP3() { let s = parseFloat(document.getElementById('p3_select').value); updateDisplay('score_p3', s); return s; }
+    
+    function addP4Row() {
+        const tbody = document.getElementById('p4_table');
+        const row = document.createElement('tr');
+        row.innerHTML = `<td><input type="text" placeholder="Ex: Oven"></td><td><input type="number" class="p4-w" oninput="calcP4()"></td><td><input type="number" class="p4-h" oninput="calcP4()"></td><td class="p4-res">0</td><td><button type="button" class="rm-btn" onclick="this.closest('tr').remove();calcP4()">X</button></td>`;
+        tbody.appendChild(row);
+    }
+    function calcP4() {
+        const rows = document.querySelectorAll('#p4_table tr');
+        let totalKwh = 0;
+        rows.forEach(r => {
+            const wRow = r.querySelector('.p4-w');
+            const hRow = r.querySelector('.p4-h');
+            if(wRow && hRow) {
+                const w = parseFloat(wRow.value) || 0; 
+                const h = parseFloat(hRow.value) || 0;
+                const kwh = (w * h) / 1000;
+                r.querySelector('.p4-res').innerText = kwh.toFixed(3);
+                totalKwh += kwh;
+            }
+        });
+        const mass = parseFloat(document.getElementById('p4_mass').value) || 1;
+        const ratio = totalKwh / mass;
+        document.getElementById('p4_kwh_kg').innerText = ratio.toFixed(2);
+        let s = 0;
+        if (ratio <= 0.5) s = 1.0;
+        else if (ratio <= 2) s = 0.75;
+        else if (ratio <= 5) s = 0.60;
+        else if (ratio <= 10) s = 0.45;
+        else if (ratio <= 25) s = 0.30;
+        else if (ratio <= 50) s = 0.15;
+        else s = 0.0;
+        updateDisplay('score_p4', s);
+        return s;
+    }
+    function calcP5() { let s = parseFloat(document.getElementById('p5_select').value); updateDisplay('score_p5', s); return s; }
+    function calcP6() {
+        const sels = document.querySelectorAll('.p6-sub');
+        let sum = 0; sels.forEach(x => sum += parseFloat(x.value));
+        let s = sum / 3; updateDisplay('score_p6', s); return s;
+    }
+    
+    function calcA1() { let s = parseFloat(document.getElementById('a1_select').value); updateDisplay('score_a1', s); return s; }
+    function calcA2() { let s = parseFloat(document.getElementById('a2_select').value); updateDisplay('score_a2', s); return s; }
+    function calcA3() { let s = parseFloat(document.getElementById('a3_select').value); updateDisplay('score_a3', s); return s; }
+    function calcA4() { let s = parseFloat(document.getElementById('a4_select').value); updateDisplay('score_a4', s); return s; }
+    function calcA5() { let s = parseFloat(document.getElementById('a5_select').value); updateDisplay('score_a5', s); return s; }
+
+    function calcD1() { let s = parseFloat(document.getElementById('d1_select').value); updateDisplay('score_d1', s); return s; }
+    function calcD2() { let s = parseFloat(document.getElementById('d2_select').value); updateDisplay('score_d2', s); return s; }
+    function addD3Row() {
+        const tbody = document.querySelector('#d3_table tbody');
+        const row = document.createElement('tr');
+        row.innerHTML = `<td><input type="text" placeholder="Ex: Component"></td><td><input type="number" class="d3-f" value="0.5" step="0.1" max="1" min="0" oninput="calcD3()"></td><td><select class="d3-s" onchange="calcD3()"><option value="1">1.00</option><option value="0.75">0.75</option><option value="0.5">0.50</option><option value="0.25">0.25</option><option value="0">0.00</option></select></td><td><button type="button" class="rm-btn" onclick="this.closest('tr').remove();calcD3()">X</button></td>`;
+        tbody.appendChild(row);
+    }
+    function calcD3() {
+        const rows = document.querySelectorAll('#d3_table tbody tr');
+        let weightedSum = 0, totalFrac = 0;
+        rows.forEach(r => {
+            const f = parseFloat(r.querySelector('.d3-f').value) || 0;
+            const s = parseFloat(r.querySelector('.d3-s').value) || 0;
+            weightedSum += f * s;
+            totalFrac += f;
+        });
+        let s = (totalFrac > 0) ? weightedSum : 0; 
+        updateDisplay('score_d3', s);
+        return s;
+    }
+    function calcD4() { let s = parseFloat(document.getElementById('d4_select').value); updateDisplay('score_d4', s); return s; }
+
+    // --- CHART LOGIC & COLORS ---
+    
+    function getColor(val) {
+        if(val >= 0.85) return "var(--c-excellent)";
+        if(val >= 0.65) return "var(--c-good)";
+        if(val >= 0.45) return "var(--c-inter)";
+        if(val >= 0.25) return "var(--c-low)";
+        return "var(--c-unsustainable)";
+    }
+
+    function polarToCartesian(centerX, centerY, radius, angleInDegrees) {
+        var angleInRadians = (angleInDegrees - 180) * Math.PI / 180.0;
+        return {
+            x: centerX + (radius * Math.cos(angleInRadians)),
+            y: centerY + (radius * Math.sin(angleInRadians))
+        };
+    }
+    
+    function createSlicePath(x, y, rOuter, rInner, startAngle, endAngle) {
+        var startOuter = polarToCartesian(x, y, rOuter, endAngle);
+        var endOuter = polarToCartesian(x, y, rOuter, startAngle);
+        var startInner = polarToCartesian(x, y, rInner, endAngle);
+        var endInner = polarToCartesian(x, y, rInner, startAngle);
+        
+        var largeArc = (endAngle - startAngle) <= 180 ? "0" : "1";
+        
+        return [
+            "M", startOuter.x, startOuter.y,
+            "A", rOuter, rOuter, 0, largeArc, 0, endOuter.x, endOuter.y,
+            "L", endInner.x, endInner.y,
+            "A", rInner, rInner, 0, largeArc, 1, startInner.x, startInner.y,
+            "Z"
+        ].join(" ");
+    }
+    
+    function getTextPos(x, y, radius, angle) {
+        return polarToCartesian(x, y, radius, angle);
+    }
+
+    function drawChart(pScores, aScores, dScores, finalScore) {
+        const svgNS = "http://www.w3.org/2000/svg";
+        const wrapper = document.getElementById('svg-chart-wrapper');
+        wrapper.innerHTML = ""; 
+
+        const w = 500, h = 260;
+        const cx = 250, cy = 240; 
+        
+        const rCriteriaOut = 230;
+        const rCriteriaIn = 190;
+        const rStageOut = 188;
+        const rStageIn = 145;
+        const rGlobalOut = 135;
+        const rGlobalIn = 125;
+
+        const totalItems = 15;
+        const sliceDeg = 180 / totalItems;
+        
+        const svg = document.createElementNS(svgNS, "svg");
+        svg.setAttribute("width", "100%");
+        svg.setAttribute("height", "100%");
+        svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+        
+        let currentAngle = 0;
+        const gap = 1; 
+
+        const drawGroup = (scores, labelPrefix, startIndex) => {
+            scores.forEach((score, i) => {
+                const start = currentAngle + gap;
+                const end = currentAngle + sliceDeg - gap;
+                const mid = (start + end) / 2;
+                
+                const path = document.createElementNS(svgNS, "path");
+                path.setAttribute("d", createSlicePath(cx, cy, rCriteriaOut, rCriteriaIn, start, end));
+                path.setAttribute("fill", getColor(score));
+                path.setAttribute("stroke", "#fff");
+                path.setAttribute("stroke-width", "1");
+                svg.appendChild(path);
+                
+                const txtPos = getTextPos(cx, cy, (rCriteriaOut + rCriteriaIn)/2, mid);
+                const text = document.createElementNS(svgNS, "text");
+                text.setAttribute("x", txtPos.x);
+                text.setAttribute("y", txtPos.y);
+                text.setAttribute("text-anchor", "middle");
+                text.setAttribute("dominant-baseline", "central");
+                text.setAttribute("class", "chart-text");
+                text.textContent = (i + 1); 
+                svg.appendChild(text);
+                
+                currentAngle += sliceDeg;
+            });
+        };
+
+        drawGroup(pScores, "P", 1);
+        drawGroup(aScores, "A", 1);
+        drawGroup(dScores, "D", 1);
+
+        const avg = arr => arr.reduce((a,b)=>a+b,0)/arr.length;
+        const scoreP = avg(pScores);
+        const scoreA = avg(aScores);
+        const scoreD = avg(dScores);
+        
+        const stages = [
+            { id: "P", count: 6, score: scoreP },
+            { id: "A", count: 5, score: scoreA },
+            { id: "D", count: 4, score: scoreD }
+        ];
+
+        let stageAngle = 0;
+        stages.forEach(stage => {
+            const spanDeg = stage.count * sliceDeg;
+            const start = stageAngle + gap;
+            const end = stageAngle + spanDeg - gap;
+            const mid = (start + end) / 2;
+            
+            const path = document.createElementNS(svgNS, "path");
+            path.setAttribute("d", createSlicePath(cx, cy, rStageOut, rStageIn, start, end));
+            path.setAttribute("fill", getColor(stage.score));
+            path.setAttribute("stroke", "#fff");
+            path.setAttribute("stroke-width", "1");
+            svg.appendChild(path);
+            
+            const txtPos = getTextPos(cx, cy, (rStageOut + rStageIn)/2, mid);
+            const text = document.createElementNS(svgNS, "text");
+            text.setAttribute("x", txtPos.x);
+            text.setAttribute("y", txtPos.y);
+            text.setAttribute("text-anchor", "middle");
+            text.setAttribute("dominant-baseline", "central");
+            text.setAttribute("class", "stage-text");
+            text.textContent = stage.id;
+            svg.appendChild(text);
+            
+            stageAngle += spanDeg;
+        });
+
+        const globalPath = document.createElementNS(svgNS, "path");
+        globalPath.setAttribute("d", createSlicePath(cx, cy, rGlobalOut, rGlobalIn, 0, 180));
+        globalPath.setAttribute("fill", getColor(finalScore));
+        svg.appendChild(globalPath);
+
+        const scoreText = document.createElementNS(svgNS, "text");
+        scoreText.setAttribute("x", cx);
+        scoreText.setAttribute("y", cy - 25); 
+        scoreText.setAttribute("text-anchor", "middle");
+        scoreText.setAttribute("dominant-baseline", "alphabetic"); 
+        scoreText.setAttribute("class", "global-score-text");
+        scoreText.textContent = finalScore.toFixed(2);
+        svg.appendChild(scoreText);
+
+        wrapper.appendChild(svg);
+    }
+
+    function calcTotal() {
+        const pScores = [calcP1(), calcP2(), calcP3(), calcP4(), calcP5(), calcP6()];
+        const aScores = [calcA1(), calcA2(), calcA3(), calcA4(), calcA5()];
+        const dScores = [calcD1(), calcD2(), calcD3(), calcD4()];
+        
+        const allScores = [...pScores, ...aScores, ...dScores];
+        const sum = allScores.reduce((a, b) => a + b, 0);
+        const finalScore = sum / allScores.length;
+
+        drawChart(pScores, aScores, dScores, finalScore);
+        
+        const txt = document.getElementById('final_classification');
+        let label = "", color = "#333";
+        if(finalScore >= 0.85) { label = "Excellent (Green Adsorbent)"; color = "var(--c-excellent)"; }
+        else if(finalScore >= 0.65) { label = "Good Sustainability"; color = "var(--c-good)"; }
+        else if(finalScore >= 0.45) { label = "Intermediate Sustainability"; color = "var(--c-inter)"; }
+        else if(finalScore >= 0.25) { label = "Low Sustainability"; color = "var(--c-low)"; }
+        else { label = "Unsustainable"; color = "var(--c-unsustainable)"; }
+        
+        txt.innerText = label;
+        txt.style.color = color;
+    }
+
+    window.onload = function() { calcTotal(); }
+</script>
+
+</body>
+</html>
