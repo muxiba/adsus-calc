@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ADSUS - Adsorbent Sustainability Index</title>
+    <!-- Dependencies -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/lucide-react@latest"></script>
+    <script src="https://unpkg.com/framer-motion@10.16.4/dist/framer-motion.js"></script>
+
+    <style type="text/tailwindcss">
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        @layer base {
+            body { @apply bg-slate-50 text-slate-900 antialiased font-['Inter']; }
+        }
+        @layer components {
+            .criteria-card { @apply flex flex-wrap gap-5 mb-5 items-start border border-slate-200 p-4 rounded-xl bg-white shadow-sm transition-all hover:shadow-md; }
+            .input-group { @apply flex-1 min-w-[280px]; }
+            label { @apply block mb-1 font-semibold text-sm text-slate-700; }
+            .desc-text { @apply text-xs text-slate-500 mb-2 italic leading-relaxed; }
+            input[type="number"], select, input[type="text"] { @apply w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-secondary focus:border-secondary outline-none transition-all text-sm; }
+            table { @apply w-full border-collapse text-sm mt-2 bg-white rounded-lg overflow-hidden border border-slate-200; }
+            th, td { @apply border border-slate-200 p-2 text-center; }
+            th { @apply bg-slate-100 text-primary font-bold; }
+            .score-box { @apply text-right min-w-[100px] flex flex-col justify-center items-end; }
+            .score-label { @apply text-[10px] text-slate-400 uppercase tracking-wider font-bold; }
+            .score-value { @apply text-2xl font-black text-secondary; }
+            .btn-secondary { @apply bg-secondary text-white px-3 py-1.5 rounded-md cursor-pointer text-xs transition-all hover:bg-green-600 font-medium; }
+        }
+    </style>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#2c3e50', secondary: '#27ae60', danger: '#c0392b',
+                        unsustainable: '#c0392b', low: '#e67e22', inter: '#f1c40f', good: '#8bc34a', excellent: '#2ecc71',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body>
+    <div id="root"><div class="flex flex-col items-center justify-center min-h-screen space-y-4"><div class="w-12 h-12 border-4 border-secondary border-t-transparent rounded-full animate-spin"></div><p class="text-slate-500 font-medium animate-pulse">Initializing ADSUS Calculator...</p></div></div>
+
+    <script type="text/babel">
+        const { useState, useMemo } = React;
+        const { motion } = window.FramerMotion;
+        const { Plus, Trash2, Calculator, FlaskConical, Recycle } = LucideReact;
+
+        const getColor = (val, enabled = true) => {
+            if (!enabled) return "#cbd5e1";
+            if (val >= 0.85) return "#2ecc71";
+            if (val >= 0.65) return "#8bc34a";
+            if (val >= 0.45) return "#f1c40f";
+            if (val >= 0.25) return "#e67e22";
+            return "#c0392b";
+        };
+
+        const AdsusChart = ({ pScores, aScores, dScores, pEnabled, aEnabled, dEnabled, finalScore, isD4Warning }) => {
+            const w = 500, h = 260, cx = 250, cy = 240;
+            const rCriteriaOut = 230, rCriteriaIn = 190, rStageOut = 188, rStageIn = 145, rGlobalOut = 135, rGlobalIn = 125;
+            const totalItems = 15, sliceDeg = 180 / totalItems, gap = 0.5;
+
+            const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
+                const r = (angleInDegrees - 180) * Math.PI / 180.0;
+                return { x: centerX + (radius * Math.cos(r)), y: centerY + (radius * Math.sin(r)) };
+            };
+
+            const createSlicePath = (x, y, rOuter, rInner, startAngle, endAngle) => {
+                const sO = polarToCartesian(x, y, rOuter, endAngle), eO = polarToCartesian(x, y, rOuter, startAngle);
+                const sI = polarToCartesian(x, y, rInner, endAngle), eI = polarToCartesian(x, y, rInner, startAngle);
+                return [`M`, sO.x, sO.y, `A`, rOuter, rOuter, 0, 0, 0, eO.x, eO.y, `L`, eI.x, eI.y, `A`, rInner, rInner, 0, 0, 1, sI.x, sI.y, `Z`].join(" ");
+            };
+
+            const avg = (arr) => arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+            let currentAngle = 0;
+            const criteriaData = [...pScores.map((s, i) => ({ s, e: pEnabled[i] })), ...aScores.map((s, i) => ({ s, e: aEnabled[i] })), ...dScores.map((s, i) => ({ s, e: dEnabled[i] }))];
+
+            return (
+                <div className="w-full max-w-[500px] mx-auto overflow-hidden">
+                    <svg viewBox={`0 0 ${w} ${h}`} className="font-sans">
+                        {criteriaData.map((item, i) => {
+                            const s = currentAngle + gap, e = currentAngle + sliceDeg - gap, mid = (s + e) / 2;
+                            const path = createSlicePath(cx, cy, rCriteriaOut, rCriteriaIn, s, e);
+                            const pos = polarToCartesian(cx, cy, (rCriteriaOut + rCriteriaIn) / 2, mid);
+                            currentAngle += sliceDeg;
+                            const num = i < 6 ? i + 1 : (i < 11 ? i - 5 : i - 10);
+                            return (
+                                <g key={i}>
+                                    <path d={path} fill={getColor(item.s, item.e)} stroke="#fff" strokeWidth="1" />
+                                    <text x={pos.x} y={pos.y} textAnchor="middle" dominantBaseline="central" className="text-[10px] font-bold fill-white pointer-events-none">{num}</text>
+                                </g>
+                            );
+                        })}
+                        {[ { id: "P", c: 6, s: avg(pScores) }, { id: "A", c: 5, s: avg(aScores) }, { id: "D", c: 4, s: avg(dScores) } ].reduce((acc, stage) => {
+                            const deg = stage.c * sliceDeg, s = acc.a + gap, e = acc.a + deg - gap, mid = (s + e) / 2;
+                            const path = createSlicePath(cx, cy, rStageOut, rStageIn, s, e);
+                            const pos = polarToCartesian(cx, cy, (rStageOut + rStageIn) / 2, mid);
+                            acc.el.push(
+                                <g key={stage.id}>
+                                    <path d={path} fill={getColor(stage.s)} stroke="#fff" strokeWidth="1" />
+                                    <text x={pos.x} y={pos.y} textAnchor="middle" dominantBaseline="central" className="text-lg font-black fill-white pointer-events-none">{stage.id}</text>
+                                </g>
+                            );
+                            acc.a += deg; return acc;
+                        }, { a: 0, el: [] }).el}
+                        <path d={createSlicePath(cx, cy, rGlobalOut, rGlobalIn, 0, 180)} fill={getColor(finalScore)} />
+                        <text x={cx} y={cy - 25} textAnchor="middle" className="text-6xl font-black" fill={isD4Warning ? "#ffa500" : "#333"}>{finalScore.toFixed(2)}</text>
+                        {isD4Warning && <text x={cx} y={cy - 5} textAnchor="middle" className="text-base font-bold" fill="#ffa500">Not Inert</text>}
+                    </svg>
+                </div>
+            );
+        };
+
+        function App() {
+            const [data, setData] = useState({
+                p1_enabled: true, p2_enabled: true, p3_enabled: true, p4_enabled: true, p5_enabled: true, p6_enabled: true,
+                a1_enabled: true, a2_enabled: true, a3_enabled: true, a4_enabled: true, a5_enabled: true,
+                d1_enabled: true, d2_enabled: true, d3_enabled: true, d4_enabled: true,
+                p1_total: 0, p1_sus: 0, p2_tox: 0, p3_score: 1, p4_equipments: [{ id: '1', name: 'Oven', power: 0, time: 0 }],
+                p4_mass: 1, p5_score: 1, p6_temp: 1, p6_pressure: 1, p6_ghs: 1, a1_score: 1, a2_score: 1, a3_score: 1, a4_score: 1, a5_score: 1,
+                d1_score: 1, d2_score: 1, d3_components: [{ id: '1', name: 'Clay', fraction: 1, score: 1 }], d4_score: 1,
+            });
+
+            const p1_s = useMemo(() => (!data.p1_enabled || data.p1_total <= 0) ? 0 : Math.min(1, data.p1_sus / data.p1_total), [data.p1_total, data.p1_sus, data.p1_enabled]);
+            const p2_s = useMemo(() => {
+                if (!data.p2_enabled || data.p1_total <= 0) return data.p2_enabled ? 1 : 0;
+                const pct = (data.p2_tox / data.p1_total) * 100;
+                if (pct === 0) return 1.0; if (pct <= 5) return 0.75; if (pct <= 10) return 0.50; if (pct <= 20) return 0.25; return 0;
+            }, [data.p1_total, data.p2_tox, data.p2_enabled]);
+            const p4_s = useMemo(() => {
+                if (!data.p4_enabled) return 0;
+                const kwh = data.p4_equipments.reduce((acc, eq) => acc + (eq.power * eq.time) / 1000, 0) / (data.p4_mass || 1);
+                if (kwh <= 0.5) return 1; if (kwh <= 2) return 0.75; if (kwh <= 5) return 0.6; if (kwh <= 10) return 0.45; if (kwh <= 25) return 0.3; if (kwh <= 50) return 0.15; return 0;
+            }, [data.p4_equipments, data.p4_mass, data.p4_enabled]);
+            const p6_s = useMemo(() => data.p6_enabled ? (data.p6_temp + data.p6_pressure + data.p6_ghs) / 3 : 0, [data.p6_temp, data.p6_pressure, data.p6_ghs, data.p6_enabled]);
+            const d3_s = useMemo(() => {
+                if (!data.d3_enabled) return 0;
+                const total = data.d3_components.reduce((acc, c) => acc + c.fraction, 0);
+                return total <= 0 ? 0 : data.d3_components.reduce((acc, c) => acc + (c.fraction * c.score), 0) / total;
+            }, [data.d3_components, data.d3_enabled]);
+
+            const pS = [p1_s, p2_s, data.p3_enabled ? data.p3_score : 0, p4_s, data.p5_enabled ? data.p5_score : 0, p6_s];
+            const aS = [data.a1_enabled?data.a1_score:0, data.a2_enabled?data.a2_score:0, data.a3_enabled?data.a3_score:0, data.a4_enabled?data.a4_score:0, data.a5_enabled?data.a5_score:0];
+            const dS = [data.d1_enabled?data.d1_score:0, data.d2_enabled?data.d2_score:0, data.d3_enabled?d3_s:0, data.d4_enabled?data.d4_score:0];
+            const pAvg = pS.reduce((a, b) => a + b, 0) / 6;
+            const aAvg = aS.reduce((a, b) => a + b, 0) / 5;
+            const dAvg = dS.reduce((a, b) => a + b, 0) / 4;
+            const final = [...pS, ...aS, ...dS].reduce((a, b) => a + b, 0) / 15;
+
+            const cly = useMemo(() => {
+                if (final >= 0.85) return { l: "Excellent (Green Adsorbent)", c: 'text-excellent' };
+                if (final >= 0.65) return { l: "Good sustainability", c: 'text-good' };
+                if (final >= 0.45) return { l: "Intermediate sustainability", c: 'text-inter' };
+                if (final >= 0.25) return { l: "Low sustainability", c: 'text-low' };
+                return { l: "Unsustainable", c: 'text-unsustainable' };
+            }, [final]);
+
+            const updateEq = (id, f, v) => setData(p => ({ ...p, p4_equipments: p.p4_equipments.map(e => e.id === id ? { ...e, [f]: v } : e) }));
+            const updateD3 = (id, f, v) => setData(p => ({ ...p, d3_components: p.d3_components.map(c => c.id === id ? { ...c, [f]: v } : c) }));
+
+            return (
+                <div className="min-h-screen py-10 px-4 sm:px-6 lg:px-8">
+                    <div className="max-w-5xl mx-auto bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100">
+                        <header className="bg-primary p-8 text-center text-white"><h1 className="text-4xl font-black tracking-tighter">ADSUS</h1><p className="text-slate-300 font-medium uppercase text-sm">Adsorbent Sustainability Index</p></header>
+                        <main className="p-6 sm:p-10 space-y-12">
+                            {/* P */}
+                            <section>
+                                <div className="flex justify-between items-center mb-6"><div className="flex items-center gap-2 font-bold text-primary text-2xl"><FlaskConical className="text-secondary" />Production Stage (P)</div><div className="text-right"><div className="text-[10px] uppercase text-slate-400 font-bold">Average P</div><div className="text-xl font-black text-secondary">{pAvg.toFixed(2)}</div></div></div>
+                                <div className="space-y-4">
+                                    {/* P1 */}
+                                    <div className={`criteria-card ${!data.p1_enabled ? 'grayscale opacity-60' : ''}`}><div className="input-group"><div className="flex justify-between items-center mb-1"><label>P1: Renewable Raw Material (%S)</label><label className="flex items-center gap-1 cursor-pointer"><input type="checkbox" checked={!data.p1_enabled} onChange={e => setData({...data, p1_enabled:!e.target.checked})} /><span className="text-[10px] text-slate-400 uppercase font-bold">Not determined</span></label></div><div className="grid grid-cols-2 gap-4"><div><label className="text-[10px] uppercase">Total Mass (g)</label><input type="number" value={data.p1_total||''} onChange={e=>setData({...data, p1_total:parseFloat(e.target.value)})}/></div><div><label className="text-[10px] uppercase">Sustainable (g)</label><input type="number" value={data.p1_sus||''} onChange={e=>setData({...data, p1_sus:parseFloat(e.target.value)})}/></div></div></div><div className="score-box"><span className="score-label">Score P1</span><span className="score-value">{p1_s.toFixed(2)}</span></div></div>
+                                    {/* P2 */}
+                                    <div className={`criteria-card ${!data.p2_enabled ? 'grayscale opacity-60' : ''}`}><div className="input-group"><div className="flex justify-between items-center mb-1"><label>P2: Toxic Raw Material (%T)</label><label className="flex items-center gap-1 cursor-pointer"><input type="checkbox" checked={!data.p2_enabled} onChange={e => setData({...data, p2_enabled:!e.target.checked})} /><span className="text-[10px] text-slate-400 uppercase font-bold">Not determined</span></label></div><div className="grid grid-cols-2 gap-4"><div><label className="text-[10px] uppercase">Total Mass (g)</label><input type="number" value={data.p1_total||''} disabled className="bg-slate-50"/></div><div><label className="text-[10px] uppercase">Toxic Mass (g)</label><input type="number" value={data.p2_tox||''} onChange={e=>setData({...data, p2_tox:parseFloat(e.target.value)})}/></div></div></div><div className="score-box"><span className="score-label">Score P2</span><span className="score-value">{p2_s.toFixed(2)}</span></div></div>
+                                    {/* P3 */}
+                                    <div className={`criteria-card ${!data.p3_enabled ? 'grayscale opacity-60' : ''}`}><div className="input-group"><div className="flex justify-between items-center mb-1"><label>P3: Use of Toxic Solvents</label><label className="flex items-center gap-1 cursor-pointer"><input type="checkbox" checked={!data.p3_enabled} onChange={e => setData({...data, p3_enabled:!e.target.checked})} /><span className="text-[10px] text-slate-400 uppercase font-bold">Not determined</span></label></div><select value={data.p3_score} onChange={e=>setData({...data, p3_score:parseFloat(e.target.value)})}><option value="1">1.00 - Green (Water, Ethanol, Ethyl Lactate)</option><option value="0.9">0.90 - Low Tox + Biodegradable (Ethyl Acetate)</option><option value="0.8">0.80 - Low Tox + Persistent (PEG, DMSO)</option><option value="0.75">0.75 - Mod. Tox + Biodegradable (Acetonitrile)</option><option value="0.6">0.60 - Mod. Tox + Persistent (DMF)</option><option value="0.45">0.45 - Toxic (Methanol, THF)</option><option value="0.3">0.30 - Toxic and Flammable (Toluene)</option><option value="0.15">0.15 - Toxic and Bioaccumulative (NMP)</option><option value="0">0.00 - Prohibited/Dangerous (Benzene)</option></select></div><div className="score-box"><span className="score-label">Score P3</span><span className="score-value">{(data.p3_enabled?data.p3_score:0).toFixed(2)}</span></div></div>
+                                    {/* P4 */}
+                                    <div className={`criteria-card ${!data.p4_enabled ? 'grayscale opacity-60' : ''}`}><div className="w-full"><div className="flex justify-between items-center mb-1"><label>P4: Energy Consumption</label><label className="flex items-center gap-1 cursor-pointer"><input type="checkbox" checked={!data.p4_enabled} onChange={e => setData({...data, p4_enabled:!e.target.checked})} /><span className="text-[10px] text-slate-400 uppercase font-bold">Not determined</span></label></div><table><thead><tr><th>Equipment</th><th>Power (W)</th><th>Time (h)</th><th>kWh</th><th className="w-8"></th></tr></thead><tbody>{data.p4_equipments.map(eq=>(<tr key={eq.id}><td><input type="text" value={eq.name} onChange={e=>updateEq(eq.id,'name',e.target.value)} className="border-none"/></td><td><input type="number" value={eq.power||''} onChange={e=>updateEq(eq.id,'power',parseFloat(e.target.value))} className="border-none"/></td><td><input type="number" value={eq.time||''} onChange={e=>updateEq(eq.id,'time',parseFloat(e.target.value))} className="border-none"/></td><td className="text-xs">{((eq.power*eq.time)/1000).toFixed(3)}</td><td><button onClick={()=>setData({...data, p4_equipments:data.p4_equipments.filter(x=>x.id!==eq.id)})} className="text-danger">×</button></td></tr>))}</tbody></table><button onClick={()=>setData({...data, p4_equipments:[...data.p4_equipments,{id:Math.random().toString(),name:'',power:0,time:0}]})} className="btn-secondary mt-2 px-2 py-1">+ EQ</button><div className="mt-3 flex items-center gap-2">Produced Mass (kg): <input type="number" value={data.p4_mass||''} onChange={e=>setData({...data, p4_mass:parseFloat(e.target.value)})} className="w-20"/></div></div><div className="score-box"><span className="score-label">Score P4</span><span className="score-value">{p4_s.toFixed(2)}</span></div></div>
+                                    {/* P5 */}
+                                    <div className={`criteria-card ${!data.p5_enabled ? 'grayscale opacity-60' : ''}`}><div className="input-group"><div className="flex justify-between items-center mb-1"><label>P5: Waste Generated (E-factor)</label><label className="flex items-center gap-1 cursor-pointer"><input type="checkbox" checked={!data.p5_enabled} onChange={e => setData({...data, p5_enabled:!e.target.checked})} /><span className="text-[10px] text-slate-400 uppercase font-bold">Not determined</span></label></div><select value={data.p5_score} onChange={e=>setData({...data, p5_score:parseFloat(e.target.value)})}><option value="1">1.00 - No waste (E = 0)</option><option value="0.85">0.85 - E ≤ 1</option><option value="0.6">0.60 - 1 &lt; E ≤ 5</option><option value="0.35">0.35 - 5 &lt; E ≤ 10</option><option value="0.1">0.10 - E &gt; 10</option><option value="0">0.00 - Hazardous Waste</option></select></div><div className="score-box"><span className="score-label">Score P5</span><span className="score-value">{(data.p5_enabled?data.p5_score:0).toFixed(2)}</span></div></div>
+                                    {/* P6 */}
+                                    <div className={`criteria-card ${!data.p6_enabled ? 'grayscale opacity-60' : ''}`}><div className="input-group"><div className="flex justify-between items-center mb-1"><label>P6: Operator Safety</label><label className="flex items-center gap-1 cursor-pointer"><input type="checkbox" checked={!data.p6_enabled} onChange={e => setData({...data, p6_enabled:!e.target.checked})} /><span className="text-[10px] text-slate-400 uppercase font-bold">Not determined</span></label></div><div className="grid grid-cols-3 gap-2 mt-1"><select value={data.p6_temp} onChange={e=>setData({...data, p6_temp:parseFloat(e.target.value)})}><option value="1">≤ 40 °C</option><option value="0.5">80-150 °C</option><option value="0">> 250 °C</option></select><select value={data.p6_pressure} onChange={e=>setData({...data, p6_pressure:parseFloat(e.target.value)})}><option value="1">Ambient</option><option value="0.5">5-20 bar</option><option value="0">> 50 bar</option></select><select value={data.p6_ghs} onChange={e=>setData({...data, p6_ghs:parseFloat(e.target.value)})}><option value="1">None</option><option value="0.5">Moderate</option><option value="0">Critical</option></select></div></div><div className="score-box"><span className="score-label">Score P6</span><span className="score-value">{p6_s.toFixed(2)}</span></div></div>
+                                </div>
+                            </section>
+
+                            {/* A */}
+                            <section>
+                                <div className="flex justify-between items-center mb-6"><div className="flex items-center gap-2 font-bold text-primary text-2xl"><Calculator className="text-secondary" />Application Stage (A)</div><div className="text-right"><div className="text-[10px] uppercase text-slate-400 font-bold">Average A</div><div className="text-xl font-black text-secondary">{aAvg.toFixed(2)}</div></div></div>
+                                <div className="space-y-4">
+                                    {[
+                                        {id:'a1', l:'A1: Adsorption Capacity (qe,max)', ops:[{v:1,t:'1.00 - q > 1.50'},{v:0.75,t:'0.75 - 0.75 < q ≤ 1.50'},{v:0.5,t:'0.50 - 0.30 < q ≤ 0.75'},{v:0.25,t:'0.25 - 0.03 < q ≤ 0.30'},{v:0,t:'0.00 - q ≤ 0.03'}]},
+                                        {id:'a2', l:'A2: Reuse (Cycles)', ops:[{v:1,t:'1.00 - ≥ 6 cycles'},{v:0.5,t:'0.50 - 2 to 3 cycles'},{v:0,t:'0.00 - 0 cycle'}]},
+                                        {id:'a3', l:'A3: Real Conditions', ops:[{v:1,t:'1.00 - ≥80% in real/simulated'},{v:0.5,t:'0.50 - lab with interferents'},{v:0,t:'0.00 - Lab only'}]},
+                                        {id:'a4', l:'A4: Regeneration Solvent', ops:[{v:1,t:'1.00 - Green (Water, Ethanol)'},{v:0.5,t:'0.50 - Methanol/Acid/Base'},{v:0,t:'0.00 - Toxic (DMF)'}]},
+                                        {id:'a5', l:'A5: Secondary Leaching', ops:[{v:1,t:'1.00 - No toxic species'},{v:0.5,t:'0.50 - Below limit'},{v:0,t:'0.00 - Above limit'}]}
+                                    ].map(crit=>(
+                                        <div key={crit.id} className={`criteria-card ${!data[crit.id+'_enabled'] ? 'grayscale opacity-60' : ''}`}><div className="input-group"><div className="flex justify-between items-center mb-1"><label>{crit.l}</label><label className="flex items-center gap-1 cursor-pointer"><input type="checkbox" checked={!data[crit.id+'_enabled']} onChange={e=>setData({...data,[crit.id+'_enabled']:!e.target.checked})}/><span className="text-[10px] text-slate-400 uppercase font-bold">Not determined</span></label></div><select value={data[crit.id+'_score']} onChange={e=>setData({...data,[crit.id+'_score']:parseFloat(e.target.value)})}>{crit.ops.map(o=><option key={o.v} value={o.v}>{o.t}</option>)}</select></div><div className="score-box"><span className="score-label">Score {crit.id.toUpperCase()}</span><span className="score-value">{(data[crit.id+'_enabled']?data[crit.id+'_score']:0).toFixed(2)}</span></div></div>
+                                    ))}
+                                </div>
+                            </section>
+
+                            {/* D */}
+                            <section>
+                                <div className="flex justify-between items-center mb-6"><div className="flex items-center gap-2 font-bold text-primary text-2xl"><Recycle className="text-secondary" />Disposal Stage (D)</div><div className="text-right"><div className="text-[10px] uppercase text-slate-400 font-bold">Average D</div><div className="text-xl font-black text-secondary">{dAvg.toFixed(2)}</div></div></div>
+                                <div className="space-y-4">
+                                    <div className={`criteria-card ${!data.d1_enabled ? 'grayscale opacity-60' : ''}`}><div className="input-group"><div className="flex justify-between items-center mb-1"><label>D1: Chemical Stability (ΔpH)</label><label className="flex items-center gap-1 cursor-pointer"><input type="checkbox" checked={!data.d1_enabled} onChange={e=>setData({...data,d1_enabled:!e.target.checked})}/><span className="text-[10px] text-slate-400 uppercase font-bold">Not determined</span></label></div><select value={data.d1_score} onChange={e=>setData({...data,d1_score:parseFloat(e.target.value)})}><option value="1">1.00 - ΔpH ≤ 0.5</option><option value="0.5">0.50 - 0.5 &lt; ΔpH ≤ 1.5</option><option value="0">0.00 - ΔpH &gt; 1.5</option></select></div><div className="score-box"><span className="score-label">Score D1</span><span className="score-value">{(data.d1_enabled?data.d1_score:0).toFixed(2)}</span></div></div>
+                                    <div className={`criteria-card ${!data.d2_enabled ? 'grayscale opacity-60' : ''}`}><div className="input-group"><div className="flex justify-between items-center mb-1"><label>D2: Secondary Contamination</label><label className="flex items-center gap-1 cursor-pointer"><input type="checkbox" checked={!data.d2_enabled} onChange={e=>setData({...data,d2_enabled:!e.target.checked})}/><span className="text-[10px] text-slate-400 uppercase font-bold">Not determined</span></label></div><select value={data.d2_score} onChange={e=>setData({...data,d2_score:parseFloat(e.target.value)})}><option value="1">1.00 - No toxic species</option><option value="0.5">0.50 - Below limit</option><option value="0">0.00 - No study</option></select></div><div className="score-box"><span className="score-label">Score D2</span><span className="score-value">{(data.d2_enabled?data.d2_score:0).toFixed(2)}</span></div></div>
+                                    <div className={`criteria-card ${!data.d3_enabled ? 'grayscale opacity-60' : ''}`}><div className="w-full"><div className="flex justify-between items-center mb-1"><label>D3: Waste Composition</label><label className="flex items-center gap-1 cursor-pointer"><input type="checkbox" checked={!data.d3_enabled} onChange={e=>setData({...data,d3_enabled:!e.target.checked})}/><span className="text-[10px] text-slate-400 uppercase font-bold">Not determined</span></label></div><table><thead><tr><th>Component</th><th>Fraction</th><th>Score</th><th className="w-8"></th></tr></thead><tbody>{data.d3_components.map(c=>(<tr key={c.id}><td><input type="text" value={c.name} onChange={e=>updateD3(c.id,'name',e.target.value)} className="border-none"/></td><td><input type="number" value={c.fraction||''} onChange={e=>updateD3(c.id,'fraction',parseFloat(e.target.value))} className="border-none"/></td><td><select value={c.score} onChange={e=>updateD3(c.id,'score',parseFloat(e.target.value))} className="border-none"><option value="1">1.00</option><option value="0.5">0.50</option><option value="0">0.00</option></select></td><td><button onClick={()=>setData({...data,d3_components:data.d3_components.filter(x=>x.id!==c.id)})} className="text-danger">×</button></td></tr>))}</tbody></table><button onClick={()=>setData({...data,d3_components:[...data.d3_components,{id:Math.random().toString(),name:'',fraction:0,score:1}]})} className="btn-secondary mt-2 px-2 py-1">+ COMP</button></div><div className="score-box"><span className="score-label">Score D3</span><span className="score-value">{d3_s.toFixed(2)}</span></div></div>
+                                    <div className={`criteria-card ${!data.d4_enabled ? 'grayscale opacity-60' : ''}`}><div className="input-group"><div className="flex justify-between items-center mb-1"><label>D4: Adsorbent-Pollutant Stability</label><label className="flex items-center gap-1 cursor-pointer"><input type="checkbox" checked={!data.d4_enabled} onChange={e=>setData({...data,d4_enabled:!e.target.checked})}/><span className="text-[10px] text-slate-400 uppercase font-bold">Not determined</span></label></div><select value={data.d4_score} onChange={e=>setData({...data,d4_score:parseFloat(e.target.value)})}><option value="1">1.00 - Does not release</option><option value="0">0.00 - Releases pollutant</option></select></div><div className="score-box"><span className="score-label">Score D4</span><span className="score-value">{(data.d4_enabled?data.d4_score:0).toFixed(2)}</span></div></div>
+                                </div>
+                            </section>
+
+                            {/* RESULT */}
+                            <section className="bg-slate-50 -mx-10 p-12 border-t border-slate-200 text-center">
+                                <h2 className="text-2xl font-bold text-primary mb-8">Sustainability Index</h2>
+                                <AdsusChart pScores={pS} aScores={aS} dScores={dS} pEnabled={[data.p1_enabled,data.p2_enabled,data.p3_enabled,data.p4_enabled,data.p5_enabled,data.p6_enabled]} aEnabled={[data.a1_enabled,data.a2_enabled,data.a3_enabled,data.a4_enabled,data.a5_enabled]} dEnabled={[data.d1_enabled,data.d2_enabled,data.d3_enabled,data.d4_enabled]} finalScore={final} isD4Warning={data.d4_score===0 && data.d4_enabled} />
+                                <h2 className={`text-4xl font-black uppercase mt-8 ${cly.c}`}>{cly.l}</h2>
+                                <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto text-left">
+                                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm"><h4 className="text-xs font-black text-slate-400 uppercase tracking-widest border-b pb-2 mb-4">Stage Averages</h4><div className="space-y-3 font-bold">
+                                        <div className="flex justify-between"><span>Production (P)</span><span>{pAvg.toFixed(2)}</span></div>
+                                        <div className="flex justify-between"><span>Application (A)</span><span>{aAvg.toFixed(2)}</span></div>
+                                        <div className="flex justify-between"><span>Disposal (D)</span><span>{dAvg.toFixed(2)}</span></div>
+                                    </div></div>
+                                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm text-xs space-y-2">
+                                        <div className="flex gap-2 items-center"><div className="w-3 h-3 rounded-full bg-excellent"></div> 0.85 – 1.00: Excellent</div>
+                                        <div className="flex gap-2 items-center"><div className="w-3 h-3 rounded-full bg-good"></div> 0.65 – 0.84: Good</div>
+                                        <div className="flex gap-2 items-center"><div className="w-3 h-3 rounded-full bg-inter"></div> 0.45 – 0.64: Intermediate</div>
+                                        <div className="flex gap-2 items-center"><div className="w-3 h-3 rounded-full bg-low"></div> 0.25 – 0.44: Low</div>
+                                        <div className="flex gap-2 items-center"><div className="w-3 h-3 rounded-full bg-unsustainable"></div> 0.00 – 0.24: Unsustainable</div>
+                                    </div>
+                                </div>
+                            </section>
+                        </main>
+                        <footer className="p-8 text-center text-slate-400 text-xs border-t border-slate-100">© 2026 ADSUS - Adsorbent Sustainability Index</footer>
+                    </div>
+                </div>
+            );
+        }
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>
