@@ -129,6 +129,16 @@ export default function App() {
     return { level: SustainabilityLevel.UNSUSTAINABLE, color: 'text-unsustainable' };
   }, [finalScore]);
 
+  const isPotentiallyHarmful = useMemo(() => {
+    return (!data.a5_enabled) ||
+           (!data.d4_enabled) ||
+           (data.d4_enabled && data.d4_score === 0) ||
+           (data.a5_enabled && data.a5_score === 0.25) ||
+           (data.d2_enabled && data.d2_score === 0.25) ||
+           (data.a5_enabled && data.a5_score === 0) ||
+           (data.d2_enabled && data.d2_score === 0);
+  }, [data.a5_enabled, data.d4_enabled, data.d4_score, data.a5_score, data.d2_enabled, data.d2_score]);
+
   const addEquipment = () => {
     setData(prev => ({
       ...prev,
@@ -214,7 +224,7 @@ export default function App() {
                         onChange={e => setData(prev => ({ ...prev, p1_enabled: !e.target.checked }))}
                         className="w-3 h-3 accent-secondary"
                       />
-                      <span className="text-[10px] text-slate-400 font-bold uppercase">Not determined</span>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase">Not available information</span>
                     </label>
                   </div>
                   <p className="desc-text">Total mass used in preparation and mass of sustainable material.</p>
@@ -255,7 +265,7 @@ export default function App() {
                         onChange={e => setData(prev => ({ ...prev, p2_enabled: !e.target.checked }))}
                         className="w-3 h-3 accent-secondary"
                       />
-                      <span className="text-[10px] text-slate-400 font-bold uppercase">Not determined</span>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase">Not available information</span>
                     </label>
                   </div>
                   <p className="desc-text">Mass of toxic/aggressive material, excluding solvent.</p>
@@ -292,7 +302,7 @@ export default function App() {
                         onChange={e => setData(prev => ({ ...prev, p3_enabled: !e.target.checked }))}
                         className="w-3 h-3 accent-secondary"
                       />
-                      <span className="text-[10px] text-slate-400 font-bold uppercase">Not determined</span>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase">Not available information</span>
                     </label>
                   </div>
                   <select value={data.p3_score} onChange={e => setData(prev => ({ ...prev, p3_score: parseFloat(e.target.value) }))}>
@@ -325,7 +335,7 @@ export default function App() {
                         onChange={e => setData(prev => ({ ...prev, p4_enabled: !e.target.checked }))}
                         className="w-3 h-3 accent-secondary"
                       />
-                      <span className="text-[10px] text-slate-400 font-bold uppercase">Not determined</span>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase">Not available information</span>
                     </label>
                   </div>
                   <p className="desc-text">Total consumption (kWh) divided by produced mass (kg).</p>
@@ -393,7 +403,7 @@ export default function App() {
                         onChange={e => setData(prev => ({ ...prev, p5_enabled: !e.target.checked }))}
                         className="w-3 h-3 accent-secondary"
                       />
-                      <span className="text-[10px] text-slate-400 font-bold uppercase">Not determined</span>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase">Not available information</span>
                     </label>
                   </div>
                   <select value={data.p5_score} onChange={e => setData(prev => ({ ...prev, p5_score: parseFloat(e.target.value) }))}>
@@ -423,7 +433,7 @@ export default function App() {
                         onChange={e => setData(prev => ({ ...prev, p6_enabled: !e.target.checked }))}
                         className="w-3 h-3 accent-secondary"
                       />
-                      <span className="text-[10px] text-slate-400 font-bold uppercase">Not determined</span>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase">Not available information</span>
                     </label>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
@@ -519,8 +529,8 @@ export default function App() {
                   { v: 1, t: '1.00 - No toxic species' },
                   { v: 0.75, t: '0.75 - With species, No leaching' },
                   { v: 0.5, t: '0.50 - With species, Below limit' },
-                  { v: 0.25, t: '0.25 - With species, Above limit' },
-                  { v: 0, t: '0.00 - With species, No study' }
+                  { v: 0.25, t: '0.25 - With species, No study' },
+                  { v: 0, t: '0.00 - With species, Above limit' }
                 ]}
               ].map(crit => (
                 <div key={crit.id} className={`criteria-card ${(data as any)[`${crit.id}_enabled`] === false ? 'grayscale opacity-60' : ''}`}>
@@ -534,7 +544,7 @@ export default function App() {
                           onChange={e => setData(prev => ({ ...prev, [`${crit.id}_enabled`]: !e.target.checked }))}
                           className="w-3 h-3 accent-secondary"
                         />
-                        <span className="text-[10px] text-slate-400 font-bold uppercase">Not determined</span>
+                        <span className="text-[10px] text-slate-400 font-bold uppercase">Not available information</span>
                       </label>
                     </div>
                     <select
@@ -580,7 +590,7 @@ export default function App() {
                         onChange={e => setData(prev => ({ ...prev, d1_enabled: !e.target.checked }))}
                         className="w-3 h-3 accent-secondary"
                       />
-                      <span className="text-[10px] text-slate-400 font-bold uppercase">Not determined</span>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase">Not available information</span>
                     </label>
                   </div>
                   <select value={data.d1_score} onChange={e => setData(prev => ({ ...prev, d1_score: parseFloat(e.target.value) }))}>
@@ -607,15 +617,15 @@ export default function App() {
                         onChange={e => setData(prev => ({ ...prev, d2_enabled: !e.target.checked }))}
                         className="w-3 h-3 accent-secondary"
                       />
-                      <span className="text-[10px] text-slate-400 font-bold uppercase">Not determined</span>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase">Not available information</span>
                     </label>
                   </div>
                   <select value={data.d2_score} onChange={e => setData(prev => ({ ...prev, d2_score: parseFloat(e.target.value) }))}>
                     <option value="1">1.00 - No toxic species</option>
                     <option value="0.75">0.75 - With species, No leaching</option>
                     <option value="0.5">0.50 - With species, Below limit</option>
-                    <option value="0.25">0.25 - With species, Above limit</option>
-                    <option value="0">0.00 - With species, No study</option>
+                    <option value="0.25">0.25 - With species, No study</option>
+                    <option value="0">0.00 - With species, Above limit</option>
                   </select>
                 </div>
                 <div className="score-box">
@@ -636,7 +646,7 @@ export default function App() {
                         onChange={e => setData(prev => ({ ...prev, d3_enabled: !e.target.checked }))}
                         className="w-3 h-3 accent-secondary"
                       />
-                      <span className="text-[10px] text-slate-400 font-bold uppercase">Not determined</span>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase">Not available information</span>
                     </label>
                   </div>
                   <div className="overflow-x-auto">
@@ -695,7 +705,7 @@ export default function App() {
                         onChange={e => setData(prev => ({ ...prev, d4_enabled: !e.target.checked }))}
                         className="w-3 h-3 accent-secondary"
                       />
-                      <span className="text-[10px] text-slate-400 font-bold uppercase">Not determined</span>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase">Not available information</span>
                     </label>
                   </div>
                   <select value={data.d4_score} onChange={e => setData(prev => ({ ...prev, d4_score: parseFloat(e.target.value) }))}>
@@ -732,7 +742,7 @@ export default function App() {
                 />
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2 flex flex-col items-center">
                 <motion.h2
                   key={classification.level}
                   initial={{ opacity: 0, scale: 0.9 }}
@@ -741,6 +751,15 @@ export default function App() {
                 >
                   {classification.level}
                 </motion.h2>
+                {isPotentiallyHarmful && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-xl sm:text-2xl font-black text-red-600 uppercase tracking-tight mt-1"
+                  >
+                    POTENTIALLY HARMFUL
+                  </motion.div>
+                )}
               </div>
 
               <div className="flex flex-col md:flex-row gap-8 justify-center items-stretch max-w-4xl mx-auto">
