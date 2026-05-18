@@ -129,15 +129,15 @@ export default function App() {
     return { level: SustainabilityLevel.UNSUSTAINABLE, color: 'text-unsustainable' };
   }, [finalScore]);
 
-  const isPotentiallyHarmful = useMemo(() => {
-    return (!data.a5_enabled) ||
-           (!data.d4_enabled) ||
-           (data.d4_enabled && data.d4_score === 0) ||
-           (data.a5_enabled && data.a5_score === 0.25) ||
-           (data.d2_enabled && data.d2_score === 0.25) ||
-           (data.a5_enabled && data.a5_score === 0) ||
-           (data.d2_enabled && data.d2_score === 0);
-  }, [data.a5_enabled, data.d4_enabled, data.d4_score, data.a5_score, data.d2_enabled, data.d2_score]);
+  const warningLabel = useMemo(() => {
+    if ((data.a5_enabled && data.a5_score === 0) || (data.d4_enabled && data.d4_score === 0)) {
+      return "HARMFUL";
+    }
+    if (!data.a5_enabled || !data.d4_enabled) {
+      return "POTENTIALLY HARMFUL";
+    }
+    return null;
+  }, [data.a5_enabled, data.a5_score, data.d4_enabled, data.d4_score]);
 
   const addEquipment = () => {
     setData(prev => ({
@@ -233,6 +233,8 @@ export default function App() {
                       <label className="text-[10px] uppercase">Total Mass (g)</label>
                       <input
                         type="number"
+                        step="0.01"
+                        lang="en-US"
                         value={data.p1_total || ''}
                         onChange={e => setData(prev => ({ ...prev, p1_total: parseFloat(e.target.value) || 0 }))}
                       />
@@ -241,6 +243,8 @@ export default function App() {
                       <label className="text-[10px] uppercase">Sustainable Mass (g)</label>
                       <input
                         type="number"
+                        step="0.01"
+                        lang="en-US"
                         value={data.p1_sus || ''}
                         onChange={e => setData(prev => ({ ...prev, p1_sus: parseFloat(e.target.value) || 0 }))}
                       />
@@ -272,12 +276,14 @@ export default function App() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-[10px] uppercase">Total Mass (g)</label>
-                      <input type="number" value={data.p1_total || ''} disabled className="bg-slate-50 text-slate-400" />
+                      <input type="number" step="0.01" lang="en-US" value={data.p1_total || ''} disabled className="bg-slate-50 text-slate-400" />
                     </div>
                     <div>
                       <label className="text-[10px] uppercase">Toxic Mass (g)</label>
                       <input
                         type="number"
+                        step="0.01"
+                        lang="en-US"
                         value={data.p2_tox || ''}
                         onChange={e => setData(prev => ({ ...prev, p2_tox: parseFloat(e.target.value) || 0 }))}
                       />
@@ -515,15 +521,11 @@ export default function App() {
                   { v: 0, t: '0.00 - No criteria met' }
                 ]},
                 { id: 'a4', label: 'A4: Regeneration Solvent', options: [
-                  { v: 1, t: '1.00 - Green (Water, Ethanol, CO2)' },
-                  { v: 0.87, t: '0.87 - Weak Acid/Base' },
-                  { v: 0.75, t: '0.75 - Isopropanol' },
-                  { v: 0.63, t: '0.63 - Acetone' },
-                  { v: 0.5, t: '0.50 - Methanol' },
-                  { v: 0.38, t: '0.38 - Strong Acid/Base' },
-                  { v: 0.25, t: '0.25 - Acetonitrile' },
-                  { v: 0.1, t: '0.10 - DMSO' },
-                  { v: 0, t: '0.00 - DMF' }
+                  { v: 1, t: '1.00 - Preferred green solvents' },
+                  { v: 0.75, t: '0.75 - Acceptable regeneration media' },
+                  { v: 0.5, t: '0.50 - Intermediate concern solvent' },
+                  { v: 0.25, t: '0.25 - Problematic regeneration media' },
+                  { v: 0, t: '0.00 - Highly hazardous regeneration media' }
                 ]},
                 { id: 'a5', label: 'A5: Secondary Leaching (Application)', options: [
                   { v: 1, t: '1.00 - No toxic species' },
@@ -735,7 +737,6 @@ export default function App() {
                   aEnabled={[data.a1_enabled, data.a2_enabled, data.a3_enabled, data.a4_enabled, data.a5_enabled]}
                   dEnabled={[data.d1_enabled, data.d2_enabled, data.d3_enabled, data.d4_enabled]}
                   finalScore={finalScore}
-                  isD4Warning={data.d4_score === 0 && data.d4_enabled}
                   stagePEnabled={true}
                   stageAEnabled={true}
                   stageDEnabled={true}
@@ -751,13 +752,13 @@ export default function App() {
                 >
                   {classification.level}
                 </motion.h2>
-                {isPotentiallyHarmful && (
+                {warningLabel && (
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     className="text-xl sm:text-2xl font-black text-red-600 uppercase tracking-tight mt-1"
                   >
-                    POTENTIALLY HARMFUL
+                    {warningLabel}
                   </motion.div>
                 )}
               </div>

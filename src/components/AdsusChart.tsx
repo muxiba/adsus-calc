@@ -8,7 +8,6 @@ interface AdsusChartProps {
   aEnabled: boolean[];
   dEnabled: boolean[];
   finalScore: number;
-  isD4Warning: boolean;
   stagePEnabled: boolean;
   stageAEnabled: boolean;
   stageDEnabled: boolean;
@@ -17,7 +16,7 @@ interface AdsusChartProps {
 const AdsusChart: React.FC<AdsusChartProps> = ({ 
   pScores, aScores, dScores, 
   pEnabled, aEnabled, dEnabled,
-  finalScore, isD4Warning,
+  finalScore,
   stagePEnabled, stageAEnabled, stageDEnabled
 }) => {
   const w = 500;
@@ -161,22 +160,10 @@ const AdsusChart: React.FC<AdsusChartProps> = ({
           textAnchor="middle"
           dominantBaseline="alphabetic"
           className="text-6xl font-black"
-          fill={isD4Warning ? "#ffa500" : "#333"}
+          fill="#333"
         >
           {finalScore.toFixed(2)}
         </text>
-
-        {isD4Warning && (
-          <text
-            x={cx}
-            y={cy - 5}
-            textAnchor="middle"
-            className="text-base font-bold"
-            fill="#ffa500"
-          >
-            Not Inert
-          </text>
-        )}
       </svg>
     </div>
   );
