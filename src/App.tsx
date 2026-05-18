@@ -159,14 +159,28 @@ export default function App() {
   }, [finalScore]);
 
   const warningLabel = useMemo(() => {
-    if ((data.a5_enabled && data.a5_score === 0) || (data.d4_enabled && data.d4_score === 0)) {
-      return "HARMFUL";
-    }
-    if (!data.a5_enabled || !data.d4_enabled) {
-      return "POTENTIALLY HARMFUL";
-    }
+    const isHarmful = 
+      (data.d4_enabled && data.d4_score === 0) ||
+      (data.a5_enabled && data.a5_score === 0) ||
+      (data.d2_enabled && data.d2_score === 0);
+
+    if (isHarmful) return "HARMFUL";
+
+    const isPotentiallyHarmful = 
+      (!data.d4_enabled) ||
+      (!data.a5_enabled) ||
+      (!data.d2_enabled) ||
+      (data.a5_enabled && data.a5_score === 0.25) ||
+      (data.d2_enabled && data.d2_score === 0.25);
+
+    if (isPotentiallyHarmful) return "POTENTIALLY HARMFUL";
+
     return null;
-  }, [data.a5_enabled, data.a5_score, data.d4_enabled, data.d4_score]);
+  }, [
+    data.d4_enabled, data.d4_score,
+    data.a5_enabled, data.a5_score,
+    data.d2_enabled, data.d2_score
+  ]);
 
   const addEquipment = () => {
     setData(prev => ({
