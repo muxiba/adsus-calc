@@ -44,6 +44,35 @@ const INITIAL_DATA: AdsusData = {
   d4_score: 1,
 };
 
+const NumberInput = ({ value, onChange, disabled, className }: { value: number, onChange?: (v: number) => void, disabled?: boolean, className?: string }) => {
+  const [localVal, setLocalVal] = useState(value === 0 ? '' : String(value));
+
+  React.useEffect(() => {
+    if (value !== parseFloat(localVal)) {
+      setLocalVal(value === 0 ? '' : String(value));
+    }
+  }, [value]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let v = e.target.value.replace(/,/g, '.').replace(/[^0-9.]/g, '');
+    const parts = v.split('.');
+    if (parts.length > 2) v = parts[0] + '.' + parts.slice(1).join('');
+    setLocalVal(v);
+    if (onChange) onChange(parseFloat(v) || 0);
+  };
+
+  return (
+    <input 
+      type="text"
+      inputMode="decimal"
+      value={localVal}
+      onChange={handleChange}
+      disabled={disabled}
+      className={className}
+    />
+  );
+};
+
 export default function App() {
   const [data, setData] = useState<AdsusData>(INITIAL_DATA);
 
@@ -231,22 +260,16 @@ export default function App() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-[10px] uppercase">Total Mass (g)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        lang="en-US"
-                        value={data.p1_total || ''}
-                        onChange={e => setData(prev => ({ ...prev, p1_total: parseFloat(e.target.value) || 0 }))}
+                      <NumberInput
+                        value={data.p1_total}
+                        onChange={v => setData(prev => ({ ...prev, p1_total: v }))}
                       />
                     </div>
                     <div>
                       <label className="text-[10px] uppercase">Sustainable Mass (g)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        lang="en-US"
-                        value={data.p1_sus || ''}
-                        onChange={e => setData(prev => ({ ...prev, p1_sus: parseFloat(e.target.value) || 0 }))}
+                      <NumberInput
+                        value={data.p1_sus}
+                        onChange={v => setData(prev => ({ ...prev, p1_sus: v }))}
                       />
                     </div>
                   </div>
@@ -276,16 +299,13 @@ export default function App() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-[10px] uppercase">Total Mass (g)</label>
-                      <input type="number" step="0.01" lang="en-US" value={data.p1_total || ''} disabled className="bg-slate-50 text-slate-400" />
+                      <NumberInput value={data.p1_total} disabled className="bg-slate-50 text-slate-400" />
                     </div>
                     <div>
                       <label className="text-[10px] uppercase">Toxic Mass (g)</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        lang="en-US"
-                        value={data.p2_tox || ''}
-                        onChange={e => setData(prev => ({ ...prev, p2_tox: parseFloat(e.target.value) || 0 }))}
+                      <NumberInput
+                        value={data.p2_tox}
+                        onChange={v => setData(prev => ({ ...prev, p2_tox: v }))}
                       />
                     </div>
                   </div>
