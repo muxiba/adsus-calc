@@ -68,7 +68,7 @@ const NumberInput = ({ value, onChange, disabled, className }: { value: number, 
       value={localVal}
       onChange={handleChange}
       disabled={disabled}
-      className={className}
+      className={`w-full p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-secondary focus:border-secondary outline-none transition-all text-sm ${className || ''}`}
     />
   );
 };
