@@ -394,8 +394,8 @@ export default function App() {
                         {data.p4_equipments.map(eq => (
                           <tr key={eq.id}>
                             <td><input type="text" value={eq.name} onChange={e => updateEquipment(eq.id, 'name', e.target.value)} placeholder="Ex: Oven" className="border-none p-1" /></td>
-                            <td><input type="number" value={eq.power || ''} onChange={e => updateEquipment(eq.id, 'power', parseFloat(e.target.value) || 0)} className="border-none p-1 text-center" /></td>
-                            <td><input type="number" value={eq.time || ''} onChange={e => updateEquipment(eq.id, 'time', parseFloat(e.target.value) || 0)} className="border-none p-1 text-center" /></td>
+                            <td><input type="number" step="0.001" value={eq.power || ''} onChange={e => updateEquipment(eq.id, 'power', parseFloat(e.target.value) || 0)} className="border-none p-1 text-center" /></td>
+                            <td><input type="number" step="0.001" value={eq.time || ''} onChange={e => updateEquipment(eq.id, 'time', parseFloat(e.target.value) || 0)} className="border-none p-1 text-center" /></td>
                             <td className="font-mono text-xs">{((eq.power * eq.time) / 1000).toFixed(3)}</td>
                             <td>
                               <button onClick={() => removeEquipment(eq.id)} className="text-danger hover:text-red-700 transition-colors">
